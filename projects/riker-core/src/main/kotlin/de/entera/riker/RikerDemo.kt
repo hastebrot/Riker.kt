@@ -4,6 +4,7 @@ import org.junit.runner.Description
 import org.junit.runner.RunWith
 import org.junit.runner.Runner
 import org.junit.runner.notification.RunNotifier
+import java.io.Serializable
 
 class ConcreteSpec : AbstractSpec({
     describe("define describe") {
@@ -34,9 +35,11 @@ abstract class AbstractSpec {
 }
 
 class TestDefinition() {
-    private class Context(val action: TestDefinition.() -> Unit)
+    private class Context<T>(val action: T.() -> Unit) {
+        fun run(receiver: T) = receiver.action()
+    }
 
-    private var beforeEachContext: Context? = null
+    private var beforeEachContext: Context<TestDefinition>? = null
 
     fun describe(text: String, action: TestDefinition.() -> Unit) {
         println(text)
@@ -49,24 +52,32 @@ class TestDefinition() {
 
     fun it(text: String, action: TestDefinition.() -> Unit) {
         println(text)
-        beforeEachContext?.action?.let { this.it() }
+        beforeEachContext!!.run(TestDefinition())
         action()
     }
 }
 
 //class AbstractSpecRunner<T>(val specClass: Class<T>) : BlockJUnit4ClassRunner(specClass) {}
 
+data class JUnitUniqueId(val id: Int) : Serializable {
+    companion object {
+        var id = 0
+        fun next() = JUnitUniqueId(id++)
+    }
+}
+
 class AbstractSpecRunner<T>(val specClass: Class<T>) : Runner() {
+    override fun getDescription(): Description {
+        val suiteDescription = Description.createSuiteDescription(specClass)
+        val testDescription = Description.createTestDescription(specClass, "foo")
+        suiteDescription.addChild(testDescription)
+        return suiteDescription
+    }
+
     override fun run(notifier: RunNotifier) {
         specClass.newInstance()
-
         notifier.fireTestStarted(Description.createTestDescription(specClass, "foo"))
         Thread.sleep(1000)
         notifier.fireTestFinished(Description.createTestDescription(specClass, "foo"))
-    }
-
-    override fun getDescription(): Description {
-        val suiteDescription = Description.createSuiteDescription(specClass)
-        return suiteDescription
     }
 }

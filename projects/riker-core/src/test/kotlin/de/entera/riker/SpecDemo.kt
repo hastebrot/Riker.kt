@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 
 fun sum(a: Int, b: Int) = a + b
 
-class CalcSpec: Spek() { init {
+class CalcSpec : Spek() { init {
     given("foo") {
         on("bar") {
             val result = sum(1, 2)
@@ -16,6 +16,21 @@ class CalcSpec: Spek() { init {
 
             it("baz") {
                 assertEquals(3, result)
+            }
+        }
+    }
+}}
+
+class FooSpec : Spek() { init {
+    given("") {
+        beforeOn { print("1") }
+        on("") {
+            print("2")
+            it("") {
+                print("3a")
+            }
+            it("") {
+                print("3b")
             }
         }
     }
