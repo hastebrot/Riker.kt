@@ -1,0 +1,49 @@
+//-------------------------------------------------------------------------------------------------
+// PLUGINS.
+//-------------------------------------------------------------------------------------------------
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${project.ext.kotlinVersion}"
+    }
+}
+
+apply(plugin: "kotlin")
+
+//-------------------------------------------------------------------------------------------------
+// REPOSITORIES.
+//-------------------------------------------------------------------------------------------------
+
+repositories {
+    // jetbrains artifactory.
+    maven { url "http://repository.jetbrains.com/repo/" }
+
+    // maven central hosts most of the dependencies.
+    mavenCentral()
+}
+
+//-------------------------------------------------------------------------------------------------
+// DEPENDENCIES.
+//-------------------------------------------------------------------------------------------------
+
+// main source dependencies.
+dependencies {
+    // kotlin standard library.
+    compile "org.jetbrains.kotlin:kotlin-stdlib:${project.ext.kotlinVersion}"
+
+    // junit test framework.
+    compile "junit:junit:4.12", {
+        exclude group: "org.hamcrest"
+    }
+}
+
+// test source dependencies.
+dependencies {
+    // spek test framework.
+    testCompile group: "org.jetbrains.spek", name: "spek", version: "0.1.181", {
+        exclude group: "org.hamcrest"
+    }
+}
