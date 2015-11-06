@@ -21,52 +21,65 @@ class ConcreteSpec : AbstractSpec({
         }
     }
 
-    // run {}.notify("foo").run {}
+    //run {}.notify("foo").run {}
 })
 
 @RunWith(AbstractSpecRunner::class)
 abstract class AbstractSpec {
-    constructor(definition: TestDefinition.() -> Unit) {
-        TestDefinition().definition()
-    }
+    private val context: Context<SpecBuilder>
 
-    fun run(function: () -> Unit): AbstractSpec { return this }
-    fun notify(label: String): AbstractSpec { return this }
+    constructor(builder: SpecBuilder.() -> Unit) {
+        context = Context(builder)
+        context.invokeOn(SpecBuilderImpl())
+    }
 }
 
-class TestDefinition() {
-    private class Context<T>(val action: T.() -> Unit) {
-        fun run(receiver: T) = receiver.action()
-    }
+interface SpecBuilder {
+    fun describe(text: String,
+                 action: SpecBuilder.() -> Unit)
 
-    private var beforeEachContext: Context<TestDefinition>? = null
+    fun beforeEach(action: SpecBuilder.() -> Unit)
 
-    fun describe(text: String, action: TestDefinition.() -> Unit) {
+    fun it(text: String,
+           action: SpecBuilder.() -> Unit)
+}
+
+private fun <T> invokeOn(receiver: T,
+                         action: T.() -> Unit) {
+    receiver.action()
+}
+
+private class Context<T>(val action: T.() -> Unit) {
+    fun invokeOn(receiver: T) = invokeOn(receiver, action)
+}
+
+private class SpecBuilderImpl : SpecBuilder {
+    private var beforeEachContext: Context<SpecBuilder>? = null
+
+    override fun describe(text: String,
+                          action: SpecBuilder.() -> Unit) {
         println(text)
         action()
     }
 
-    fun beforeEach(action: TestDefinition.() -> Unit) {
+    override fun beforeEach(action: SpecBuilder.() -> Unit) {
         beforeEachContext = Context(action)
     }
 
-    fun it(text: String, action: TestDefinition.() -> Unit) {
+    override fun it(text: String,
+                    action: SpecBuilder.() -> Unit) {
         println(text)
-        beforeEachContext!!.run(TestDefinition())
+        beforeEachContext!!.invokeOn(this)
         action()
     }
+
+    fun run(function: () -> Unit): SpecBuilder { return this }
+    fun notify(label: String): SpecBuilder { return this }
 }
 
 //class AbstractSpecRunner<T>(val specClass: Class<T>) : BlockJUnit4ClassRunner(specClass) {}
 
-data class JUnitUniqueId(val id: Int) : Serializable {
-    companion object {
-        var id = 0
-        fun next() = JUnitUniqueId(id++)
-    }
-}
-
-class AbstractSpecRunner<T>(val specClass: Class<T>) : Runner() {
+private class AbstractSpecRunner<T>(val specClass: Class<T>) : Runner() {
     override fun getDescription(): Description {
         val suiteDescription = Description.createSuiteDescription(specClass)
         val testDescription = Description.createTestDescription(specClass, "foo")
@@ -75,9 +88,17 @@ class AbstractSpecRunner<T>(val specClass: Class<T>) : Runner() {
     }
 
     override fun run(notifier: RunNotifier) {
-        specClass.newInstance()
+        val spec: T = specClass.newInstance()
+
         notifier.fireTestStarted(Description.createTestDescription(specClass, "foo"))
         Thread.sleep(1000)
         notifier.fireTestFinished(Description.createTestDescription(specClass, "foo"))
+    }
+}
+
+private data class JUnitUniqueId(val id: Int) : Serializable {
+    companion object {
+        var id = 0
+        fun next() = JUnitUniqueId(id++)
     }
 }
