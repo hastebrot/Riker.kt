@@ -1,14 +1,5 @@
 package de.entera.riker
 
-// The BDD interface provides describe(), context(), it(), before(), after(), beforeEach(), and
-// afterEach(). context() is just an alias for describe(), and behaves the same way; it just
-// provides a way to keep tests easier to read and organized.
-//
-// The TDD interface provides suite(), test(), suiteSetup(), suiteTeardown(), setup(), and
-// teardown().
-//
-// -- the mocha.js documentation
-
 import org.junit.runner.Description
 import org.junit.runner.RunWith
 import org.junit.runner.Runner
@@ -16,30 +7,41 @@ import org.junit.runner.notification.RunNotifier
 import java.io.Serializable
 
 class ConcreteTest : AbstractTest({
-    suite("define suite") {
-        println("in suite")
+    println("in 0 suite")
 
-        suiteSetup {
-            println("in suiteSetup")
+    suite("1.0 suite") {
+        println("in 1.0 suite")
+        var value = 0
+
+        suiteSetup("1.1 suiteSetup") {
+            println("in 1.1 suiteSetup")
+            value++
         }
 
-        test("define foo test") {
-            println("in foo test")
+        test("1.2 test") {
+            println("in 1.2 test ($value)")
+            //assertEquals(11, value)
         }
 
-        test("define bar test") {
-            println("in bar test")
+        test("1.3 test") {
+            println("in 1.3 test ($value)")
+            //assertEquals(11, value)
         }
+
+        value = 10
     }
-
-    //run {}.notify("foo").run {}
 })
+
+//class ConcreteTestExt : AbstractTest({
+//    run {}.notify("foo").run {}
+//}
 
 @RunWith(AbstractTestRunner::class)
 abstract class AbstractTest {
     private val context: Context<TestBuilder>
 
     constructor(builder: TestBuilder.() -> Unit) {
+        //TestBuilderImpl().builder()
         context = Context(builder)
         context.invokeOn(TestBuilderImpl())
     }
@@ -47,40 +49,42 @@ abstract class AbstractTest {
 
 interface TestBuilder {
     fun suite(text: String,
-              action: TestBuilder.() -> Unit)
+              builder: TestBuilder.() -> Unit)
 
-    fun suiteSetup(action: TestBuilder.() -> Unit)
+    fun suiteSetup(text: String = "",
+                   action: () -> Unit)
 
     fun test(text: String,
-             action: TestBuilder.() -> Unit)
+             action: () -> Unit)
 }
 
 private fun <T> invokeOn(receiver: T,
-                         action: T.() -> Unit) {
-    receiver.action()
+                         method: T.() -> Unit) {
+    receiver.method()
 }
 
-private class Context<T>(val action: T.() -> Unit) {
-    fun invokeOn(receiver: T) = invokeOn(receiver, action)
+private class Context<T>(val method: T.() -> Unit) {
+    fun invokeOn(receiver: T) = invokeOn(receiver, method)
 }
 
 private class TestBuilderImpl : TestBuilder {
-    private var suiteSetupContext: Context<TestBuilder>? = null
+    private var suiteSetupContext: Context<() -> Unit>? = null
 
     override fun suite(text: String,
-                       action: TestBuilder.() -> Unit) {
+                       builder: TestBuilder.() -> Unit) {
         println(text)
-        action()
+        builder()
     }
 
-    override fun suiteSetup(action: TestBuilder.() -> Unit) {
-        suiteSetupContext = Context(action)
+    override fun suiteSetup(text: String,
+                            action: () -> Unit) {
+        suiteSetupContext = Context({ action() })
     }
 
     override fun test(text: String,
-                      action: TestBuilder.() -> Unit) {
+                      action: () -> Unit) {
         println(text)
-        suiteSetupContext!!.invokeOn(this)
+        suiteSetupContext!!.invokeOn({})
         action()
     }
 
@@ -91,8 +95,9 @@ private class TestBuilderImpl : TestBuilder {
 //class AbstractSpecRunner<T>(val specClass: Class<T>) : BlockJUnit4ClassRunner(specClass) {}
 
 private class AbstractTestRunner<T>(val testClass: Class<T>) : Runner() {
-    override fun getDescription(): Description {
+    override fun getDescription(): Description? {
         val suiteDescription = Description.createSuiteDescription(testClass)
+        //return suiteDescription.childlessCopy()
         val testDescription = Description.createTestDescription(testClass, "foo")
         suiteDescription.addChild(testDescription)
         return suiteDescription
@@ -104,12 +109,16 @@ private class AbstractTestRunner<T>(val testClass: Class<T>) : Runner() {
         notifier.fireTestStarted(Description.createTestDescription(testClass, "foo"))
         Thread.sleep(1000)
         notifier.fireTestFinished(Description.createTestDescription(testClass, "foo"))
+
+        notifier.fireTestStarted(Description.createTestDescription(testClass, "bar"))
+        Thread.sleep(1000)
+        notifier.fireTestFinished(Description.createTestDescription(testClass, "bar"))
     }
 }
 
 private data class UniqueId(val id: Int) : Serializable {
     companion object {
-        var id = 0
-        fun generateId() = UniqueId(id++)
+        var currentId = 0; private set
+        fun nextId() = UniqueId(currentId++)
     }
 }
